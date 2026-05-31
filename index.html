@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kasino Pro - Master Edition 11.1</title>
+    <title>Kasino Pro - Master Edition 12.0</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -16,7 +16,6 @@
         }
         h1 { color: #ffcc00; margin: 5px 0; font-size: 24px; text-shadow: 1px 1px 3px black; }
         
-        /* SETUP SCREEN */
         .setup-screen {
             max-width: 450px;
             margin: 30px auto;
@@ -42,7 +41,6 @@
         }
         .setup-screen button { background: #ffcc00; color: black; cursor: pointer; width: 100%; padding: 12px; margin-top: 15px; font-size: 16px; }
 
-        /* GAME LAYOUT */
         .game-layout {
             display: none;
             max-width: 1100px;
@@ -50,7 +48,6 @@
             position: relative;
         }
         
-        /* Spillebordet */
         .poker-table {
             position: relative;
             width: 100%;
@@ -70,7 +67,6 @@
         .poker-table.landscape-forced { max-width: 950px; height: 420px; margin: 15px auto; }
         .poker-table.waiting-click { cursor: pointer; border-color: #ffcc00; box-shadow: inset 0 0 60px rgba(255,204,0,0.3), 0 10px 20px rgba(0,0,0,0.5); }
 
-        /* Spiller-zoner */
         .player-zone {
             position: absolute;
             padding: 8px 12px;
@@ -101,7 +97,6 @@
             box-sizing: border-box;
         }
 
-        /* KORT DESIGN */
         .card {
             width: 52px;
             height: 76px;
@@ -165,7 +160,6 @@
         }
         .build-cards { display: flex; gap: 2px; }
 
-        /* CONTROLS */
         .controls {
             margin: 10px 0;
             display: flex;
@@ -187,7 +181,6 @@
         }
         button.action-btn:hover { transform: translateY(-1px); }
         
-        /* MANUEL FORTSET-KNAP */
         button.next-turn-btn {
             background: #ffcc00;
             color: black;
@@ -247,6 +240,7 @@
     
     <div id="status-msg">Velkommen! Konfigurer dit spil herunder.</div>
 
+    <!-- CONFIG SCREEN -->
     <div id="setup-screen" class="setup-screen">
         <h3 style="margin-top:0; color:#ffcc00; text-align:center;">Nyt Spil</h3>
         
@@ -263,8 +257,8 @@
             <label>Computer 1 (Venstre):</label>
             <select id="ai-lvl-1">
                 <option value="easy">Nybegynder</option>
-                <option value="medium" selected>Øvet</option>
-                <option value="hard">Ekspert</option>
+                <option value="medium">Øvet</option>
+                <option value="hard" selected>Ekspert</option>
             </select>
         </div>
 
@@ -281,8 +275,8 @@
             <label>Computer 3 (Højre):</label>
             <select id="ai-lvl-3">
                 <option value="easy">Nybegynder</option>
-                <option value="medium">Øvet</option>
-                <option value="hard" selected>Ekspert</option>
+                <option value="medium" selected>Øvet</option>
+                <option value="hard">Ekspert</option>
             </select>
         </div>
 
@@ -297,6 +291,7 @@
         <button onclick="startGameSetup()">START SPIL</button>
     </div>
 
+    <!-- GAMEPLAY BOARD -->
     <div id="game-layout" class="game-layout">
         <div class="poker-table" id="poker-table" onclick="handleTableClick()">
             <div id="zone-1" class="player-zone zone-top"></div>
@@ -311,6 +306,7 @@
             </div>
         </div>
 
+        <!-- Almindelige knapper -->
         <div class="controls" id="player-controls">
             <button class="action-btn" onclick="tryTakeCards()">⚡ Tag Stik</button>
             <button class="action-btn" style="background: #007bff; color: white;" onclick="showBuildInterface()">🏗️ Byg...</button>
@@ -324,6 +320,7 @@
             </div>
         </div>
 
+        <!-- Pause / Klik kontrol -->
         <div class="controls" id="paused-controls" style="display: none;">
             <button class="action-btn next-turn-btn" onclick="resumeSpil()">➔ Klik på skærmen for at fortsætte</button>
         </div>
@@ -344,6 +341,9 @@
         
         let isWaitingForUserConfirm = false;
         let postConfirmCallback = null;
+
+        // Korttælling til Ekspert AI
+        let playedCardsTracker = [];
 
         function toggleLayoutMode() {
             let table = document.getElementById('poker-table');
@@ -395,6 +395,7 @@
             ];
             
             deck = [];
+            playedCardsTracker = [];
             for (let s of suits) {
                 for (let v of values) {
                     deck.push({ suit: s, name: v.n, value: v.v, isRed: (s==='♥'||s==='♦') });
@@ -443,6 +444,12 @@
             if (card.suit === '♦' && card.name === '10') return [10, 16];
             if (card.name === 'A') return [1, 14];
             return [card.value];
+        }
+
+        function trackPlayedCards(cardsArray) {
+            cardsArray.forEach(c => {
+                playedCardsTracker.push({ suit: c.suit, name: c.name, value: c.value });
+            });
         }
 
         function updateStatusText() {
@@ -613,10 +620,8 @@
             if (callback) callback();
         }
 
-        /* OPDATERET LOGIK: Svupper neutralisering sker KUN hvis ALLE har mindst en svupper hver */
         function handleSvupperNeutralization() {
             let playersWithSvuppere = players.filter(p => p.svuppere > 0);
-            
             if (playersWithSvuppere.length === numPlayers) {
                 players.forEach(p => p.svuppere = 0);
                 alert("💥 ALL-ROUND NEUTRALISERING! Samtlige spillere på bordet har nu lavet en svupper i denne runde, så alle svupper-point slettes og nulstilles!");
@@ -634,26 +639,56 @@
             let cardValues = getCardValues(myCard, false);
             let optionsSet = new Set();
 
-            let isUpgradingOwnBuild = (selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build' && tableItems[selectedTableItemIndices[0]].owner === 0);
+            // Særtilfælde: Byg videre på eksisterende byggeri (f.eks. Dobbeltbyg)
+            let isModifyingBuild = selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build';
             
-            if (isUpgradingOwnBuild) {
+            if (isModifyingBuild) {
                 let currentBuild = tableItems[selectedTableItemIndices[0]];
-                if (cardValues.includes(currentBuild.value)) {
-                    optionsSet.add(currentBuild.value);
+                
+                // Regel 2: Hvis man har bygget 8, og der ligger Store Kasino (10/16) i det, kan man bygge videre til 16 ved at smide en 8'er ovenpå
+                let hasStoreKasino = currentBuild.cards.some(c => c.suit === '♦' && c.name === '10');
+                if (currentBuild.value === 8 && hasStoreKasino && cardValues.includes(8)) {
+                    optionsSet.add(16);
                 }
+                
+                // Almindeligt dobbeltbyg eller udvidelse (f.eks. Byg 8 oven i eksisterende byg 8)
+                cardValues.forEach(v => {
+                    if (v === currentBuild.value) {
+                        optionsSet.add(currentBuild.value);
+                    }
+                });
             } else {
+                // Almindelig kombination af løse kort på bordet + kort fra hånden
                 let tableCards = [];
+                let hasOtherBuildsSelected = false;
+
                 selectedTableItemIndices.forEach(idx => {
-                    if (tableItems[idx].type === 'single') tableCards.push(tableItems[idx].card);
+                    if (tableItems[idx].type === 'single') {
+                        tableCards.push(tableItems[idx].card);
+                    } else {
+                        hasOtherBuildsSelected = true;
+                    }
                 });
 
-                if (tableCards.length > 0) {
+                // Regel 3: Hvis der er et eksisterende byggeri på bordet (fx til 8), og man vil lægge løse kort oveni (fx 5 fra bordet + 3 fra hånden)
+                let activeBuildOnTable = tableItems.find(item => item.type === 'build' && item.owner === p.id);
+
+                if (tableCards.length > 0 && !hasOtherBuildsSelected) {
                     for (let target = 2; target <= 16; target++) {
                         let allTestCards = [...tableCards, myCard];
                         if (canPartitionCardsIntoTarget(allTestCards, target)) {
                             optionsSet.add(target);
                         }
                     }
+                }
+                
+                if (activeBuildOnTable && tableCards.length > 0 && !hasOtherBuildsSelected) {
+                    cardValues.forEach(v => {
+                        let tableSum = tableCards.reduce((sum, c) => sum + c.value, 0); // forenklet sumcheck
+                        if (tableSum + v === activeBuildOnTable.value) {
+                            optionsSet.add(activeBuildOnTable.value);
+                        }
+                    });
                 }
             }
 
@@ -682,43 +717,50 @@
 
             let p = players[0];
             let myCard = p.hand[selectedPlayerCardIdx];
-
-            let hasCollector = p.hand.some((c, idx) => idx !== selectedPlayerCardIdx && getCardValues(c, true).includes(targetValue));
-            if (getCardValues(myCard, true).includes(targetValue) && p.hand.filter(c => getCardValues(c, true).includes(targetValue)).length >= 2) { hasCollector = true; }
-            
-            if (!hasCollector) { 
-                alert(`Ulovligt træk! Du skal have opsamlingskortet til ${targetValue} klar på hånden for at bygge.`); 
-                hideBuildInterface();
-                return; 
-            }
-
-            let isUpgradingOwnBuild = (selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build' && tableItems[selectedTableItemIndices[0]].owner === 0);
             let logTxt = "";
 
-            if (isUpgradingOwnBuild) {
+            let isModifyingBuild = selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build';
+
+            if (isModifyingBuild) {
                 let existingBuild = tableItems[selectedTableItemIndices[0]];
                 existingBuild.cards.push(myCard);
+                existingBuild.value = targetValue; // Kan ændres fra 8 til 16 jf. regel 2
                 existingBuild.isMultiple = true; 
                 p.hand.splice(selectedPlayerCardIdx, 1);
                 p.activeBuildValue = targetValue;
-                logTxt = `Du lagde i et dobbeltbyggeri! "Mere ${targetValue}".`;
+                logTxt = `Du udbyggede til et dobbeltbyggeri! "Mere ${targetValue}".`;
             } else {
-                if(p.activeBuildValue !== null) {
-                    alert(`Du har allerede et aktivt enkeltbyggeri til ${p.activeBuildValue}! Du skal hente det før du bygger nyt.`);
-                    hideBuildInterface();
-                    return;
-                }
-                let combinedCards = [];
+                // Tjek om man bygger videre på sit eksisterende byggeri via løse kort på bordet (Regel 3)
+                let tableCards = [];
                 selectedTableItemIndices.forEach(idx => {
-                    if (tableItems[idx].type === 'single') combinedCards.push(tableItems[idx].card);
+                    if (tableItems[idx].type === 'single') tableCards.push(tableItems[idx].card);
                 });
-                combinedCards.push(myCard);
 
-                selectedTableItemIndices.sort((a,b) => b-a).forEach(idx => tableItems.splice(idx, 1));
-                p.hand.splice(selectedPlayerCardIdx, 1);
-                tableItems.push({ type: 'build', value: targetValue, cards: combinedCards, isMultiple: false, owner: 0 });
-                p.activeBuildValue = targetValue; 
-                logTxt = `Du byggede til ${targetValue}.`;
+                let matchingBuildIdx = tableItems.findIndex(item => item.type === 'build' && item.value === targetValue && item.owner === p.id);
+
+                if (matchingBuildIdx !== -1) {
+                    // Læg kortene ind i det eksisterende byggeri
+                    tableItems[matchingBuildIdx].cards.push(myCard, ...tableCards);
+                    tableItems[matchingBuildIdx].isMultiple = true;
+                    selectedTableItemIndices.sort((a,b) => b-a).forEach(idx => {
+                        if (idx !== matchingBuildIdx) tableItems.splice(idx, 1);
+                    });
+                    p.hand.splice(selectedPlayerCardIdx, 1);
+                    logTxt = `Du udbyggede dit eksisterende ${targetValue}-byggeri med flere kort fra bordet.`;
+                } else {
+                    // Helt nyt byggeri
+                    if(p.activeBuildValue !== null) {
+                        alert(`Du har allerede et aktivt byggeri til ${p.activeBuildValue}! Du skal hente det før du bygger nyt.`);
+                        hideBuildInterface();
+                        return;
+                    }
+                    let combinedCards = [...tableCards, myCard];
+                    selectedTableItemIndices.sort((a,b) => b-a).forEach(idx => tableItems.splice(idx, 1));
+                    p.hand.splice(selectedPlayerCardIdx, 1);
+                    tableItems.push({ type: 'build', value: targetValue, cards: combinedCards, isMultiple: false, owner: 0 });
+                    p.activeBuildValue = targetValue; 
+                    logTxt = `Du byggede til ${targetValue}.`;
+                }
             }
 
             hideBuildInterface();
@@ -762,7 +804,12 @@
                 });
 
                 buildsSelected.forEach(b => { if (b.value !== testVal) validForThisVal = false; });
-                if (currentSingleCards.length > 0 && !canPartitionCardsIntoTarget(currentSingleCards, testVal)) { validForThisVal = false; }
+                
+                // Tjek om de løse kort kan deles ud i bunker af 'testVal'
+                if (currentSingleCards.length > 0 && !canPartitionCardsIntoTarget(currentSingleCards, testVal)) { 
+                    validForThisVal = false; 
+                }
+                
                 if (validForThisVal) { targetValueFound = testVal; break; }
             }
 
@@ -783,6 +830,7 @@
                 }
             });
 
+            trackPlayedCards(captured);
             p.pile.push(...captured);
             tableItems = []; p.hand.splice(cardIdx, 1);
             p.svuppere++; 
@@ -809,6 +857,7 @@
                 } else { capturedCards.push(item.card); }
             });
 
+            trackPlayedCards(capturedCards);
             p.pile.push(...capturedCards);
             tableIndices.sort((a,b) => b-a).forEach(idx => tableItems.splice(idx, 1));
             p.hand.splice(cardIdx, 1);
@@ -833,6 +882,7 @@
             if (p.activeBuildValue !== null) { alert(`Du kan ikke smide et kort, når du har et låst byggeri til ${p.activeBuildValue}!`); return; }
 
             let card = p.hand.splice(selectedPlayerCardIdx, 1)[0];
+            trackPlayedCards([card]);
             tableItems.push({ type: 'single', card: card, value: card.value });
             let logTxt = `Du lagde ${getCardText(card)} på bordet.`;
             clearSelection(); 
@@ -842,33 +892,85 @@
         function triggerAiTurn() {
             isAiThinking = true;
             updateStatusText();
-            setTimeout(executeComputerTurn, 1000); 
+            setTimeout(executeComputerTurn, 1200); 
         }
 
+        // SMART INTELLIGENS TIL COMPUTEREN (RETTELSER TIL ØVET & EKSPERT)
         function executeComputerTurn() {
             isAiThinking = false;
             let comp = players[activePlayerIdx];
             if (comp.hand.length === 0) { checkRoundOrRoundEnd(); return; }
 
+            // Spar 5 Fejeblad har altid førsteprioritet
             let sp5Idx = comp.hand.findIndex(c => c.suit === '♠' && c.name === '5');
             if (sp5Idx !== -1 && tableItems.length > 0) {
                 executeFejeblad(activePlayerIdx, sp5Idx); return;
             }
 
+            // Find alle mulige stik computeren overhovedet KAN tage lige nu
+            let possibleTakes = [];
             for (let i = 0; i < comp.hand.length; i++) {
                 let card = comp.hand[i];
                 let allowedVals = getCardValues(card, true);
-                if (comp.activeBuildValue !== null) allowedVals = allowedVals.filter(v => v === comp.activeBuildValue);
+                if (comp.activeBuildValue !== null) {
+                    allowedVals = allowedVals.filter(v => v === comp.activeBuildValue);
+                }
 
-                for (let testVal of allowedVals) {
-                    for (let j = 0; j < tableItems.length; j++) {
-                        if (tableItems[j].value === testVal) {
-                            executeTake(activePlayerIdx, i, [j], testVal); return;
+                allowedVals.forEach(v => {
+                    // Enkelt-kort match eller kombinationer af løse kort
+                    let tableSingleCards = tableItems.filter(item => item.type === 'single').map(item => item.card);
+                    
+                    // Prøv at finde alle indeks på bordet, der matcher værdien v
+                    let targetIndices = [];
+                    tableItems.forEach((item, idx) => {
+                        if (item.value === v) {
+                            if (item.type === 'build' || item.type === 'single') {
+                                targetIndices.push(idx);
+                            }
+                        }
+                    });
+
+                    if (targetIndices.length > 0) {
+                        possibleTakes.push({ handIdx: i, tableIndices: targetIndices, val: v, weight: 10 });
+                    }
+
+                    // Avanceret kombinationsstik (f.eks. 5 + 3 hvis man har en 8'er)
+                    if (tableItems.length >= 2) {
+                        // Tjek om der findes delmængder af de løse kort som til sammen giver 'v'
+                        // Forenklet: Test om kombinationen af alle matchende elementer virker
+                        let singlesIdx = [];
+                        tableItems.forEach((item, idx) => { if(item.type === 'single') singlesIdx.push(idx); });
+                        let selectedSingles = singlesIdx.map(idx => tableItems[idx].card);
+                        if(selectedSingles.length > 0 && canPartitionCardsIntoTarget(selectedSingles, v)) {
+                            possibleTakes.push({ handIdx: i, tableIndices: singlesIdx, val: v, weight: 12 });
                         }
                     }
-                }
+                });
             }
 
+            // Hvis computeren er ØVET eller EKSPERT, SKAL den tage et stik, hvis det findes! (Regel 4)
+            if (possibleTakes.length > 0 && (comp.type === 'medium' || comp.type === 'hard')) {
+                // Eksperten vælger det tungeste/bedste stik (flest pointkort / spar)
+                let bestTake = possibleTakes[0];
+                if (comp.type === 'hard') {
+                    let maxWeight = -100;
+                    possibleTakes.forEach(take => {
+                        let weight = take.weight;
+                        take.tableIndices.forEach(idx => {
+                            let item = tableItems[idx];
+                            if(item.type === 'single') {
+                                if(item.card.suit === '♠') weight += 2;
+                                if(item.card.name === 'A' || (item.card.suit==='♦'&&item.card.name==='10')) weight += 5;
+                            }
+                        });
+                        if (weight > maxWeight) { maxWeight = weight; bestTake = take; }
+                    });
+                }
+                executeTake(activePlayerIdx, bestTake.handIdx, bestTake.tableIndices, bestTake.val);
+                return;
+            }
+
+            // Hvis intet stik kan tages, prøv at bygge (kun Medium og Hard)
             if (comp.activeBuildValue === null && comp.type !== 'easy') {
                 for (let i = 0; i < comp.hand.length; i++) {
                     let myCard = comp.hand[i];
@@ -896,13 +998,37 @@
                 }
             }
 
+            // SMID KORT LOGIK (Strategisk for Eksperten - Regel 5)
             let dropIdx = 0;
-            if(comp.type === 'hard') {
+            if (comp.type === 'hard') {
+                // Eksperten tæller kort og gemmer værdifulde kort, spar samt pointkort til sidst.
+                // Sorterer kort på hånden efter vigtighed, og smider det absolut mindst vigtige.
+                let scores = comp.hand.map((card, idx) => {
+                    let weight = 0;
+                    if (card.suit === '♠') weight += 10; // Spar er vigtigt!
+                    if (card.name === 'A') weight += 20; // Esser gemmes!
+                    if (card.suit === '♦' && card.name === '10') weight += 30; // Store Kasino gemmes!
+                    if (card.suit === '♠' && card.name === '2') weight += 25; // Lille Kasino gemmes!
+                    
+                    // Tæl hvor mange af denne kortværdi der allerede er gået
+                    let goneCount = playedCardsTracker.filter(c => c.value === card.value).length;
+                    if (goneCount >= 2) {
+                        weight -= 5; // Mindre risiko for at modstanderen kan bygge, hvis mange er gået
+                    }
+                    return { index: idx, weight: weight };
+                });
+
+                // Find kortet med den laveste vægt (mindst værdifuldt)
+                scores.sort((a, b) => a.weight - b.weight);
+                dropIdx = scores[0].index;
+            } else if (comp.type === 'medium') {
+                // Almindelig øvet smider bare et tilfældigt kort, der ikke er es eller kasino, hvis muligt
                 let safeIdx = comp.hand.findIndex(c => c.name!=='A' && !(c.suit==='♠'&&c.name==='2') && !(c.suit==='♦'&&c.name==='10'));
                 if(safeIdx !== -1) dropIdx = safeIdx;
             }
 
             let cardDropped = comp.hand.splice(dropIdx, 1)[0];
+            trackPlayedCards([cardDropped]);
             tableItems.push({ type: 'single', card: cardDropped, value: cardDropped.value });
             let logTxt = `${comp.name} smed ${getCardText(cardDropped)} på bordet.`;
             pauseAndAwaitConfirm(logTxt, endTurn);
@@ -940,20 +1066,39 @@
         function afslutOgBeregnPoint(lastStikWinnerId) {
             let logMsg = "RUNDEN ER AFSLUTTET!\n\n";
             let maxCards = -1, maxCardsPlayer = null, cardsTie = false;
-            let maxSpades = -1, maxSpadesPlayer = null, spadesTie = false;
+            let maxSpades = -1, spadesWinners = [], maxSpadesVal = -1;
 
+            // 1. Beregn hvem der har flest kort
             players.forEach(p => {
-                let cCount = p.pile.length; let sCount = p.pile.filter(c => c.suit === '♠').length;
+                let cCount = p.pile.length;
                 if (cCount > maxCards) { maxCards = cCount; maxCardsPlayer = p; cardsTie = false; }
                 else if (cCount === maxCards) { cardsTie = true; }
-                if (sCount > maxSpades) { maxSpades = sCount; maxSpadesPlayer = p; spadesTie = false; }
-                else if (sCount === maxSpades) { spadesTie = true; }
+            });
+
+            // 2. Beregn hvem der har flest spar (RETTELSE 1: Delt førsteplads giver 1 point til hver)
+            players.forEach(p => {
+                let sCount = p.pile.filter(c => c.suit === '♠').length;
+                if (sCount > maxSpadesVal) {
+                    maxSpadesVal = sCount;
+                    spadesWinners = [p];
+                } else if (sCount === maxSpadesVal && sCount > 0) {
+                    spadesWinners.push(p);
+                }
             });
 
             players.forEach(p => {
                 let rPoints = 0; logMsg += `--- ${p.name} ---\n`;
                 if (!cardsTie && maxCardsPlayer === p) { rPoints += 1; logMsg += `- Flest kort (+1 pt)\n`; }
-                if (!spadesTie && maxSpadesPlayer === p) { rPoints += 2; logMsg += `- Flest spar (+2 pt)\n`; }
+                
+                // Spar pointuddeling logik jf. din rettelse
+                if (spadesWinners.includes(p)) {
+                    if (spadesWinners.length === 1) {
+                        rPoints += 2; logMsg += `- Flest spar alene (+2 pt)\n`;
+                    } else {
+                        rPoints += 1; logMsg += `- Delt flest spar med modstander (+1 pt hver)\n`;
+                    }
+                }
+
                 let aces = p.pile.filter(c => c.name === 'A').length;
                 if (aces > 0) { rPoints += aces; logMsg += `- Eser (+${aces} pt)\n`; }
                 if (p.pile.some(c => c.suit === '♦' && c.name === '10')) { rPoints += 2; logMsg += `- Store Kasino (♦10) (+2 pt)\n`; }
