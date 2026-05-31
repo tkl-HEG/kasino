@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasino Pro - Master Edition 11.1</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0b4028;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        h1 { color: #ffcc00; margin: 5px 0; font-size: 24px; text-shadow: 1px 1px 3px black; }
+        
+        /* SETUP SCREEN */
+        .setup-screen {
+            max-width: 450px;
+            margin: 30px auto;
+            background: rgba(0,0,0,0.85);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #ffcc00;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .setup-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            text-align: left;
+        }
+        .setup-screen select, .setup-screen button {
+            padding: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 5px;
+            border: none;
+        }
+        .setup-screen button { background: #ffcc00; color: black; cursor: pointer; width: 100%; padding: 12px; margin-top: 15px; font-size: 16px; }
+
+        /* GAME LAYOUT */
+        .game-layout {
+            display: none;
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        /* Spillebordet */
+        .poker-table {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background: radial-gradient(circle, #14633d 0%, #0b3a23 100%);
+            border: 11px solid #5a3d28;
+            border-radius: 40px;
+            margin: 15px 0;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.6), 0 10px 20px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            transition: all 0.5s ease;
+        }
+
+        .poker-table.landscape-forced { max-width: 950px; height: 420px; margin: 15px auto; }
+        .poker-table.waiting-click { cursor: pointer; border-color: #ffcc00; box-shadow: inset 0 0 60px rgba(255,204,0,0.3), 0 10px 20px rgba(0,0,0,0.5); }
+
+        /* Spiller-zoner */
+        .player-zone {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 8px;
+            font-size: 11px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            min-width: 120px;
+            box-sizing: border-box;
+        }
+        .player-zone.active { border-color: #ffcc00; box-shadow: 0 0 15px #ffcc00; }
+        
+        .zone-bottom { bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10; width: 90%; max-width: 420px; }
+        .zone-left { left: 15px; top: 40%; transform: translateY(-50%); }
+        .zone-top { top: 10px; left: 50%; transform: translateX(-50%); }
+        .zone-right { right: 15px; top: 40%; transform: translateY(-50%); }
+
+        .table-center {
+            width: 50%;
+            height: 45%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        /* KORT DESIGN */
+        .card {
+            width: 52px;
+            height: 76px;
+            background: white;
+            border-radius: 6px;
+            color: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px;
+            box-sizing: border-box;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+            border: 2px solid transparent;
+            position: relative;
+            transition: transform 0.2s ease, border-color 0.2s;
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+        }
+        @keyframes slideIn {
+            from { transform: scale(0.3) translateY(40px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .card.red { color: #dc3545; }
+        .card.selected { transform: translateY(-12px); border-color: #ffcc00; box-shadow: 0 5px 12px rgba(255,204,0,0.6); }
+        .card.table-item.selected-table { border-color: #007bff; transform: scale(1.05); }
+        
+        .card-back {
+            width: 18px;
+            height: 26px;
+            background: linear-gradient(135deg, #7f1d1d 25%, #b91c1c 100%);
+            border: 1px solid white;
+            border-radius: 3px;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            display: inline-block;
+            margin: 1px;
+        }
+
+        .build-container {
+            background: rgba(255, 204, 0, 0.15);
+            border: 2px solid #ffcc00;
+            border-radius: 6px;
+            padding: 3px;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            cursor: pointer;
+            animation: slideIn 0.4s ease-out;
+        }
+        .build-container.is-multiple { border-style: double; border-width: 4px; background: rgba(255, 153, 0, 0.2); }
+        .build-label {
+            font-size: 8px;
+            color: #ffcc00;
+            font-weight: bold;
+            background: rgba(0,0,0,0.8);
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+        .build-cards { display: flex; gap: 2px; }
+
+        /* CONTROLS */
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        button.action-btn {
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background: #ffcc00;
+            color: #111;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        }
+        button.action-btn:hover { transform: translateY(-1px); }
+        
+        /* MANUEL FORTSET-KNAP */
+        button.next-turn-btn {
+            background: #ffcc00;
+            color: black;
+            font-size: 16px;
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 3px solid white;
+            animation: pulseBtn 1.5s infinite;
+        }
+        @keyframes pulseBtn {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 204, 0, 0.7); }
+            70% { transform: scale(1.03); box-shadow: 0 0 0 15px rgba(255, 204, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 204, 0, 0); }
+        }
+
+        #status-msg { font-size: 16px; margin: 8px 0; font-weight: bold; color: #ffcc00; text-shadow: 1px 1px 3px black; min-height: 24px; }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            max-width: 1000px;
+            margin: 0 auto;
+            align-items: center;
+        }
+        .top-bar button {
+            background: rgba(0,0,0,0.4); color: white; border: 1px solid #ccc; padding: 6px 10px; cursor: pointer; border-radius: 4px; font-size: 12px;
+        }
+
+        #build-dropdown-container {
+            display: none;
+            background: rgba(0,0,0,0.85);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ffcc00;
+            margin-top: 5px;
+        }
+        #build-dropdown-container select {
+            padding: 5px; font-weight: bold; border-radius: 4px; margin-right: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .poker-table:not(.landscape-forced) { height: 520px; border-radius: 20px; }
+            .poker-table:not(.landscape-forced) .zone-left { left: 5px; top: 22%; }
+            .poker-table:not(.landscape-forced) .zone-right { right: 5px; top: 22%; }
+            .poker-table:not(.landscape-forced) .table-center { width: 85%; height: 35%; margin-top: 35px; }
+            .card { width: 44px; height: 64px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button onclick="toggleLayoutMode()">🔄 Skift Visning</button>
+        <h1>KASINO</h1>
+        <div id="layout-indicator" style="font-size:11px; color:#aaa;">Format: Auto</div>
+    </div>
+    
+    <div id="status-msg">Velkommen! Konfigurer dit spil herunder.</div>
+
+    <div id="setup-screen" class="setup-screen">
+        <h3 style="margin-top:0; color:#ffcc00; text-align:center;">Nyt Spil</h3>
+        
+        <div class="setup-row">
+            <label>Antal spillere:</label>
+            <select id="opt-players" onchange="toggleAISelects()">
+                <option value="2">2 Spillere (Overfor hinanden)</option>
+                <option value="3">3 Spillere</option>
+                <option value="4" selected>4 Spillere</option>
+            </select>
+        </div>
+
+        <div class="setup-row" id="row-ai1">
+            <label>Computer 1 (Venstre):</label>
+            <select id="ai-lvl-1">
+                <option value="easy">Nybegynder</option>
+                <option value="medium" selected>Øvet</option>
+                <option value="hard">Ekspert</option>
+            </select>
+        </div>
+
+        <div class="setup-row" id="row-ai2">
+            <label>Computer 2 (Top):</label>
+            <select id="ai-lvl-2">
+                <option value="easy">Nybegynder</option>
+                <option value="medium" selected>Øvet</option>
+                <option value="hard">Ekspert</option>
+            </select>
+        </div>
+
+        <div class="setup-row" id="row-ai3">
+            <label>Computer 3 (Højre):</label>
+            <select id="ai-lvl-3">
+                <option value="easy">Nybegynder</option>
+                <option value="medium">Øvet</option>
+                <option value="hard" selected>Ekspert</option>
+            </select>
+        </div>
+
+        <div class="setup-row">
+            <label>Spiltype:</label>
+            <select id="opt-gametype">
+                <option value="21">Match (Først til 21 point)</option>
+                <option value="1">Hurtig kamp (1 runde)</option>
+            </select>
+        </div>
+
+        <button onclick="startGameSetup()">START SPIL</button>
+    </div>
+
+    <div id="game-layout" class="game-layout">
+        <div class="poker-table" id="poker-table" onclick="handleTableClick()">
+            <div id="zone-1" class="player-zone zone-top"></div>
+            <div id="zone-2" class="player-zone zone-left"></div>
+            <div id="zone-3" class="player-zone zone-right"></div>
+
+            <div class="table-center" id="table-cards"></div>
+
+            <div id="zone-0" class="player-zone zone-bottom">
+                <div id="player-info" style="font-weight:bold; color:#ffcc00; font-size:12px;"></div>
+                <div id="player-hand" style="display:flex; justify-content:center; gap:4px; margin-top:5px; min-height:76px; flex-wrap:wrap;"></div>
+            </div>
+        </div>
+
+        <div class="controls" id="player-controls">
+            <button class="action-btn" onclick="tryTakeCards()">⚡ Tag Stik</button>
+            <button class="action-btn" style="background: #007bff; color: white;" onclick="showBuildInterface()">🏗️ Byg...</button>
+            <button class="action-btn" style="background: #dc3545; color: white;" onclick="tryDropCard()">Smid Kort</button>
+            
+            <div id="build-dropdown-container">
+                <label style="font-size:12px; color:#ffcc00; font-weight:bold;">Vælg byggeværdi: </label>
+                <select id="build-value-select"></select>
+                <button class="action-btn" style="padding:4px 10px; font-size:12px;" onclick="confirmBuildFromDropdown()">Bekræft Byg</button>
+                <button class="action-btn" style="padding:4px 10px; font-size:12px; background:#555; color:white;" onclick="hideBuildInterface()">Annuller</button>
+            </div>
+        </div>
+
+        <div class="controls" id="paused-controls" style="display: none;">
+            <button class="action-btn next-turn-btn" onclick="resumeSpil()">➔ Klik på skærmen for at fortsætte</button>
+        </div>
+    </div>
+
+    <script>
+        let numPlayers = 4;
+        let maxPoints = 21;
+        let deck = [];
+        let tableItems = [];
+        let players = []; 
+        let activePlayerIdx = 0;
+        let dealerIdx = 0; 
+        let selectedPlayerCardIdx = null;
+        let selectedTableItemIndices = [];
+        let lastInRowToTakeId = null;
+        let isAiThinking = false;
+        
+        let isWaitingForUserConfirm = false;
+        let postConfirmCallback = null;
+
+        function toggleLayoutMode() {
+            let table = document.getElementById('poker-table');
+            let ind = document.getElementById('layout-indicator');
+            if (table.classList.contains('landscape-forced')) {
+                table.classList.remove('landscape-forced');
+                ind.innerText = "Format: Auto";
+            } else {
+                table.classList.add('landscape-forced');
+                ind.innerText = "Format: Bredskærm";
+            }
+        }
+
+        function toggleAISelects() {
+            let val = parseInt(document.getElementById('opt-players').value);
+            document.getElementById('row-ai1').style.display = val >= 2 ? 'flex' : 'none';
+            document.getElementById('row-ai2').style.display = val >= 3 ? 'flex' : 'none';
+            document.getElementById('row-ai3').style.display = val >= 4 ? 'flex' : 'none';
+        }
+
+        function startGameSetup() {
+            numPlayers = parseInt(document.getElementById('opt-players').value);
+            maxPoints = document.getElementById('opt-gametype').value === '21' ? 21 : 1;
+
+            players = [];
+            players.push({ id: 0, name: "Dig", hand: [], pile: [], svuppere: 0, matchPoints: 0, activeBuildValue: null, type: 'human' });
+            
+            if(numPlayers === 2) {
+                players.push({ id: 1, name: "Computer 1", hand: [], pile: [], svuppere: 0, matchPoints: 0, activeBuildValue: null, type: document.getElementById('ai-lvl-2').value });
+            } else {
+                if(numPlayers >= 2) players.push({ id: 1, name: "Computer 1", hand: [], pile: [], svuppere: 0, matchPoints: 0, activeBuildValue: null, type: document.getElementById('ai-lvl-1').value });
+                if(numPlayers >= 3) players.push({ id: 2, name: "Computer 2", hand: [], pile: [], svuppere: 0, matchPoints: 0, activeBuildValue: null, type: document.getElementById('ai-lvl-2').value });
+                if(numPlayers >= 4) players.push({ id: 3, name: "Computer 3", hand: [], pile: [], svuppere: 0, matchPoints: 0, activeBuildValue: null, type: document.getElementById('ai-lvl-3').value });
+            }
+
+            dealerIdx = Math.floor(Math.random() * numPlayers);
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-layout').style.display = 'block';
+
+            startNewRound();
+        }
+
+        function startNewRound() {
+            const suits = ['♠', '♥', '♦', '♣'];
+            const values = [
+                {n:'2', v:2}, {n:'3', v:3}, {n:'4', v:4}, {n:'5', v:5}, {n:'6', v:6},
+                {n:'7', v:7}, {n:'8', v:8}, {n:'9', v:9}, {n:'10', v:10},
+                {n:'J', v:11}, {n:'Q', v:12}, {n:'K', v:13}, {n:'A', v:14}
+            ];
+            
+            deck = [];
+            for (let s of suits) {
+                for (let v of values) {
+                    deck.push({ suit: s, name: v.n, value: v.v, isRed: (s==='♥'||s==='♦') });
+                }
+            }
+            deck.sort(() => Math.random() - 0.5);
+
+            players.forEach(p => { p.hand = []; p.pile = []; p.svuppere = 0; p.activeBuildValue = null; });
+            tableItems = [];
+            lastInRowToTakeId = null;
+            isWaitingForUserConfirm = false;
+
+            for(let i=0; i<4; i++) {
+                let card = deck.pop();
+                tableItems.push({ type: 'single', card: card, value: card.value });
+            }
+
+            dealCardsToPlayers();
+            activePlayerIdx = (dealerIdx + 1) % numPlayers; 
+            
+            updateStatusText();
+            clearSelection();
+            hideBuildInterface();
+            updateUI();
+
+            if (activePlayerIdx !== 0) { triggerAiTurn(); }
+        }
+
+        function dealCardsToPlayers() {
+            if(deck.length === numPlayers * 4) {
+                document.getElementById('status-msg').innerText = "🚨 SIDSTE UDDELING I RUNDEN!";
+            }
+            for(let k=0; k<4; k++) {
+                players.forEach(p => { if(deck.length > 0) p.hand.push(deck.pop()); });
+            }
+        }
+
+        function getCardText(card) {
+            if (card.suit === '♠' && card.name === '2') return "Lille Kasino (♠2)";
+            if (card.suit === '♦' && card.name === '10') return "Store Kasino (♦10)";
+            return `${card.name}${card.suit}`;
+        }
+
+        function getCardValues(card, isForPickup = false) {
+            if (card.suit === '♠' && card.name === '2') return [2, 15];
+            if (card.suit === '♦' && card.name === '10') return [10, 16];
+            if (card.name === 'A') return [1, 14];
+            return [card.value];
+        }
+
+        function updateStatusText() {
+            if(isWaitingForUserConfirm) return;
+            if(activePlayerIdx === 0) {
+                document.getElementById('status-msg').innerText = "Det er din tur! Vælg et træk.";
+            } else {
+                document.getElementById('status-msg').innerText = `${players[activePlayerIdx].name} sidder og tænker...`;
+            }
+        }
+
+        function updateUI() {
+            let tableDOM = document.getElementById('poker-table');
+            if(isWaitingForUserConfirm) {
+                tableDOM.classList.add('waiting-click');
+                document.getElementById('player-controls').style.display = 'none';
+                document.getElementById('paused-controls').style.display = 'flex';
+            } else {
+                tableDOM.classList.remove('waiting-click');
+                document.getElementById('paused-controls').style.display = 'none';
+                document.getElementById('player-controls').style.display = (activePlayerIdx === 0 && !isAiThinking) ? 'flex' : 'none';
+            }
+
+            if(numPlayers === 2) {
+                document.getElementById('zone-1').style.display = 'block';
+                document.getElementById('zone-2').style.display = 'none';
+                document.getElementById('zone-3').style.display = 'none';
+            } else {
+                document.getElementById('zone-1').style.display = numPlayers >= 3 ? 'block' : 'none';
+                document.getElementById('zone-2').style.display = numPlayers >= 2 ? 'block' : 'none';
+                document.getElementById('zone-3').style.display = numPlayers >= 4 ? 'block' : 'none';
+            }
+
+            players.forEach((p, idx) => {
+                let zoneDOM = null;
+                if(idx === 0) zoneDOM = document.getElementById('zone-0');
+                if(numPlayers === 2) {
+                    if(idx === 1) zoneDOM = document.getElementById('zone-1');
+                } else {
+                    if(idx === 1) zoneDOM = document.getElementById('zone-2');
+                    if(idx === 2) zoneDOM = document.getElementById('zone-1');
+                    if(idx === 3) zoneDOM = document.getElementById('zone-3');
+                }
+                
+                if(zoneDOM) {
+                    if(idx === activePlayerIdx && !isWaitingForUserConfirm) zoneDOM.classList.add('active');
+                    else zoneDOM.classList.remove('active');
+                    
+                    let pSpades = p.pile.filter(c => c.suit === '♠').length;
+                    let lvlName = p.type === 'human' ? '' : ` (${p.type.toUpperCase()})`;
+                    let giverIkon = (idx === dealerIdx) ? ' 👑 (Giver)' : '';
+                    let svupperVisning = p.svuppere > 0 ? ` ⭐ Svupper: ${p.svuppere}` : '';
+                    
+                    if (idx !== 0) {
+                        let cardsBackHTML = "";
+                        for(let h=0; h<p.hand.length; h++) cardsBackHTML += `<div class="card-back"></div>`;
+                        zoneDOM.innerHTML = `
+                            <strong>${p.name}${lvlName}${giverIkon}</strong><br>
+                            Pt: ${p.matchPoints} | Bunke: ${p.pile.length} (${pSpades}♠)${svupperVisning}
+                            <div style="margin-top:4px;">${cardsBackHTML}</div>
+                        `;
+                    } else {
+                        let lockStr = p.activeBuildValue ? ` 🔒 (Eget Byg: ${p.activeBuildValue})` : '';
+                        document.getElementById('player-info').innerHTML = `
+                            <strong>Dig${giverIkon}</strong> | Pt: ${p.matchPoints} | Bunke: ${p.pile.length} (${pSpades}♠)${lockStr}${svupperVisning}
+                        `;
+                    }
+                }
+            });
+
+            const tableDiv = document.getElementById('table-cards');
+            tableDiv.innerHTML = '';
+            tableItems.forEach((item, idx) => {
+                let isSelected = selectedTableItemIndices.includes(idx);
+                if (item.type === 'single') {
+                    let cDiv = createCardVisual(item.card);
+                    cDiv.classList.add('table-item');
+                    if(isSelected) cDiv.classList.add('selected-table');
+                    cDiv.onclick = (e) => { 
+                        if(isWaitingForUserConfirm) return;
+                        if(activePlayerIdx === 0 && !isAiThinking) { e.stopPropagation(); toggleTableSelection(idx); }
+                    };
+                    tableDiv.appendChild(cDiv);
+                } else {
+                    let bBox = document.createElement('div');
+                    bBox.className = 'build-container';
+                    if(item.isMultiple) bBox.classList.add('is-multiple');
+                    if(isSelected) bBox.style.borderColor = '#007bff';
+                    bBox.onclick = (e) => { 
+                        if(isWaitingForUserConfirm) return;
+                        if(activePlayerIdx === 0 && !isAiThinking) { e.stopPropagation(); toggleTableSelection(idx); }
+                    };
+                    
+                    let label = document.createElement('div');
+                    label.className = 'build-label';
+                    let ownerName = players.find(p => p.id === item.owner)?.name || "Ukendt";
+                    let typeTxt = item.isMultiple ? "DOBBELTBYG" : "BYG";
+                    label.innerText = `${typeTxt}: ${item.value} (${ownerName})`;
+                    bBox.appendChild(label);
+
+                    let cardRow = document.createElement('div');
+                    cardRow.className = 'build-cards';
+                    item.cards.forEach(c => cardRow.appendChild(createCardVisual(c)));
+                    bBox.appendChild(cardRow);
+                    tableDiv.appendChild(bBox);
+                }
+            });
+
+            const pHandDiv = document.getElementById('player-hand');
+            pHandDiv.innerHTML = '';
+            players[0].hand.forEach((card, idx) => {
+                let cDiv = createCardVisual(card);
+                if(idx === selectedPlayerCardIdx) cDiv.classList.add('selected');
+                cDiv.onclick = (e) => {
+                    if(isWaitingForUserConfirm) return;
+                    if(activePlayerIdx === 0 && !isAiThinking) {
+                        e.stopPropagation();
+                        selectedPlayerCardIdx = (selectedPlayerCardIdx === idx) ? null : idx;
+                        updateUI();
+                    }
+                };
+                pHandDiv.appendChild(cDiv);
+            });
+        }
+
+        function createCardVisual(card) {
+            let div = document.createElement('div');
+            div.className = card.isRed ? 'card red' : 'card black';
+            let displayName = card.name;
+            if(card.suit === '♠' && card.name === '2') displayName = "L.Kas";
+            if(card.suit === '♦' && card.name === '10') displayName = "S.Kas";
+            
+            div.innerHTML = `
+                <div style="text-align:left; font-size:9px;">${displayName}${card.suit}</div>
+                <div style="font-size:16px; text-align:center; margin:auto 0;">${card.suit}</div>
+                <div style="text-align:right; font-size:9px;">${displayName}${card.suit}</div>
+            `;
+            return div;
+        }
+
+        function toggleTableSelection(idx) {
+            if(selectedTableItemIndices.includes(idx)) {
+                selectedTableItemIndices = selectedTableItemIndices.filter(i => i !== idx);
+            } else {
+                selectedTableItemIndices.push(idx);
+            }
+            updateUI();
+        }
+
+        function clearSelection() { selectedPlayerCardIdx = null; selectedTableItemIndices = []; updateUI(); }
+
+        function pauseAndAwaitConfirm(statusTekst, callback) {
+            isWaitingForUserConfirm = true;
+            postConfirmCallback = callback;
+            document.getElementById('status-msg').innerText = statusTekst + " ➔ Tryk for at fortsætte.";
+            updateUI();
+        }
+
+        function handleTableClick() {
+            if (isWaitingForUserConfirm) { resumeSpil(); }
+        }
+
+        function resumeSpil() {
+            if (!isWaitingForUserConfirm) return;
+            isWaitingForUserConfirm = false;
+            let callback = postConfirmCallback;
+            postConfirmCallback = null;
+            if (callback) callback();
+        }
+
+        /* OPDATERET LOGIK: Svupper neutralisering sker KUN hvis ALLE har mindst en svupper hver */
+        function handleSvupperNeutralization() {
+            let playersWithSvuppere = players.filter(p => p.svuppere > 0);
+            
+            if (playersWithSvuppere.length === numPlayers) {
+                players.forEach(p => p.svuppere = 0);
+                alert("💥 ALL-ROUND NEUTRALISERING! Samtlige spillere på bordet har nu lavet en svupper i denne runde, så alle svupper-point slettes og nulstilles!");
+            }
+        }
+
+        function showBuildInterface() {
+            if (selectedPlayerCardIdx === null) { alert("Vælg først det kort fra hånden, du vil bygge med."); return; }
+            
+            let p = players[0];
+            let myCard = p.hand[selectedPlayerCardIdx];
+            let selectDOM = document.getElementById('build-value-select');
+            selectDOM.innerHTML = ''; 
+
+            let cardValues = getCardValues(myCard, false);
+            let optionsSet = new Set();
+
+            let isUpgradingOwnBuild = (selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build' && tableItems[selectedTableItemIndices[0]].owner === 0);
+            
+            if (isUpgradingOwnBuild) {
+                let currentBuild = tableItems[selectedTableItemIndices[0]];
+                if (cardValues.includes(currentBuild.value)) {
+                    optionsSet.add(currentBuild.value);
+                }
+            } else {
+                let tableCards = [];
+                selectedTableItemIndices.forEach(idx => {
+                    if (tableItems[idx].type === 'single') tableCards.push(tableItems[idx].card);
+                });
+
+                if (tableCards.length > 0) {
+                    for (let target = 2; target <= 16; target++) {
+                        let allTestCards = [...tableCards, myCard];
+                        if (canPartitionCardsIntoTarget(allTestCards, target)) {
+                            optionsSet.add(target);
+                        }
+                    }
+                }
+            }
+
+            if (optionsSet.size === 0) {
+                alert("De valgte kort giver ikke en gyldig byggekombination på bordet.");
+                return;
+            }
+
+            optionsSet.forEach(val => {
+                let opt = document.createElement('option');
+                opt.value = val;
+                opt.innerText = val;
+                selectDOM.appendChild(opt);
+            });
+
+            document.getElementById('build-dropdown-container').style.display = 'inline-block';
+        }
+
+        function hideBuildInterface() {
+            document.getElementById('build-dropdown-container').style.display = 'none';
+        }
+
+        function confirmBuildFromDropdown() {
+            let targetValue = parseInt(document.getElementById('build-value-select').value);
+            if (isNaN(targetValue)) return;
+
+            let p = players[0];
+            let myCard = p.hand[selectedPlayerCardIdx];
+
+            let hasCollector = p.hand.some((c, idx) => idx !== selectedPlayerCardIdx && getCardValues(c, true).includes(targetValue));
+            if (getCardValues(myCard, true).includes(targetValue) && p.hand.filter(c => getCardValues(c, true).includes(targetValue)).length >= 2) { hasCollector = true; }
+            
+            if (!hasCollector) { 
+                alert(`Ulovligt træk! Du skal have opsamlingskortet til ${targetValue} klar på hånden for at bygge.`); 
+                hideBuildInterface();
+                return; 
+            }
+
+            let isUpgradingOwnBuild = (selectedTableItemIndices.length === 1 && tableItems[selectedTableItemIndices[0]].type === 'build' && tableItems[selectedTableItemIndices[0]].owner === 0);
+            let logTxt = "";
+
+            if (isUpgradingOwnBuild) {
+                let existingBuild = tableItems[selectedTableItemIndices[0]];
+                existingBuild.cards.push(myCard);
+                existingBuild.isMultiple = true; 
+                p.hand.splice(selectedPlayerCardIdx, 1);
+                p.activeBuildValue = targetValue;
+                logTxt = `Du lagde i et dobbeltbyggeri! "Mere ${targetValue}".`;
+            } else {
+                if(p.activeBuildValue !== null) {
+                    alert(`Du har allerede et aktivt enkeltbyggeri til ${p.activeBuildValue}! Du skal hente det før du bygger nyt.`);
+                    hideBuildInterface();
+                    return;
+                }
+                let combinedCards = [];
+                selectedTableItemIndices.forEach(idx => {
+                    if (tableItems[idx].type === 'single') combinedCards.push(tableItems[idx].card);
+                });
+                combinedCards.push(myCard);
+
+                selectedTableItemIndices.sort((a,b) => b-a).forEach(idx => tableItems.splice(idx, 1));
+                p.hand.splice(selectedPlayerCardIdx, 1);
+                tableItems.push({ type: 'build', value: targetValue, cards: combinedCards, isMultiple: false, owner: 0 });
+                p.activeBuildValue = targetValue; 
+                logTxt = `Du byggede til ${targetValue}.`;
+            }
+
+            hideBuildInterface();
+            clearSelection(); 
+            pauseAndAwaitConfirm(logTxt, endTurn);
+        }
+
+        function tryTakeCards() {
+            if (selectedPlayerCardIdx === null) { alert("Vælg et kort fra din hånd."); return; }
+            let p = players[0];
+            let myCard = p.hand[selectedPlayerCardIdx];
+
+            if (myCard.suit === '♠' && myCard.name === '5') {
+                if (tableItems.length === 0) { alert("Bordet er tomt."); return; }
+                executeFejeblad(0, selectedPlayerCardIdx); return;
+            }
+
+            if (selectedTableItemIndices.length === 0) { alert("Vælg elementer fra bordet."); return; }
+
+            let includesOwnBuild = selectedTableItemIndices.some(idx => tableItems[idx].type === 'build' && tableItems[idx].owner === 0);
+            if(p.activeBuildValue !== null && !includesOwnBuild) {
+                let allowedMyValues = getCardValues(myCard, true);
+                if(allowedMyValues.includes(p.activeBuildValue)) {
+                    alert(`Du skal hente dit eget byggeri til ${p.activeBuildValue} med dette kort!`);
+                    return;
+                }
+            }
+
+            let allowedMyValues = getCardValues(myCard, true);
+            let targetValueFound = null;
+
+            for (let testVal of allowedMyValues) {
+                let validForThisVal = true;
+                let currentSingleCards = [];
+                let buildsSelected = [];
+
+                selectedTableItemIndices.forEach(idx => {
+                    let item = tableItems[idx];
+                    if (item.type === 'build') buildsSelected.push(item);
+                    else currentSingleCards.push(item.card);
+                });
+
+                buildsSelected.forEach(b => { if (b.value !== testVal) validForThisVal = false; });
+                if (currentSingleCards.length > 0 && !canPartitionCardsIntoTarget(currentSingleCards, testVal)) { validForThisVal = false; }
+                if (validForThisVal) { targetValueFound = testVal; break; }
+            }
+
+            if (!targetValueFound) { alert("Ulovligt stik!"); return; }
+            executeTake(0, selectedPlayerCardIdx, selectedTableItemIndices, targetValueFound);
+        }
+
+        function executeFejeblad(playerIdx, cardIdx) {
+            let p = players[playerIdx];
+            let myCard = p.hand[cardIdx];
+            let captured = [myCard];
+            
+            tableItems.forEach(item => {
+                if (item.type === 'single') captured.push(item.card);
+                else {
+                    captured.push(...item.cards);
+                    players.forEach(pl => { if(item.owner === pl.id) pl.activeBuildValue = null; });
+                }
+            });
+
+            p.pile.push(...captured);
+            tableItems = []; p.hand.splice(cardIdx, 1);
+            p.svuppere++; 
+            p.activeBuildValue = null; 
+            lastInRowToTakeId = p.id;
+            
+            let logTxt = `💥 FEJEBLAD! ${p.name} ryddede bordet med Spar 5!`;
+            handleSvupperNeutralization();
+            clearSelection(); 
+            pauseAndAwaitConfirm(logTxt, endTurn);
+        }
+
+        function executeTake(playerIdx, cardIdx, tableIndices, valTaken) {
+            let p = players[playerIdx];
+            let myCard = p.hand[cardIdx];
+            let capturedCards = [myCard];
+
+            tableIndices.forEach(idx => {
+                let item = tableItems[idx];
+                if (item.type === 'build') {
+                    capturedCards.push(...item.cards);
+                    let originalOwner = players.find(pl => pl.id === item.owner);
+                    if (originalOwner) originalOwner.activeBuildValue = null;
+                } else { capturedCards.push(item.card); }
+            });
+
+            p.pile.push(...capturedCards);
+            tableIndices.sort((a,b) => b-a).forEach(idx => tableItems.splice(idx, 1));
+            p.hand.splice(cardIdx, 1);
+            lastInRowToTakeId = p.id;
+
+            let cardTxt = getCardText(myCard);
+            let logTxt = "";
+            if (tableItems.length === 0) {
+                p.svuppere++;
+                logTxt = `💥 SVUPPER! ${p.name} ryddede bordet med ${cardTxt}!`;
+                handleSvupperNeutralization();
+            } else {
+                logTxt = `${p.name} tog stik med ${cardTxt} (Værdi: ${valTaken}).`;
+            }
+            clearSelection(); 
+            pauseAndAwaitConfirm(logTxt, endTurn);
+        }
+
+        function tryDropCard() {
+            if (selectedPlayerCardIdx === null) { alert("Vælg et kort."); return; }
+            let p = players[0];
+            if (p.activeBuildValue !== null) { alert(`Du kan ikke smide et kort, når du har et låst byggeri til ${p.activeBuildValue}!`); return; }
+
+            let card = p.hand.splice(selectedPlayerCardIdx, 1)[0];
+            tableItems.push({ type: 'single', card: card, value: card.value });
+            let logTxt = `Du lagde ${getCardText(card)} på bordet.`;
+            clearSelection(); 
+            pauseAndAwaitConfirm(logTxt, endTurn);
+        }
+
+        function triggerAiTurn() {
+            isAiThinking = true;
+            updateStatusText();
+            setTimeout(executeComputerTurn, 1000); 
+        }
+
+        function executeComputerTurn() {
+            isAiThinking = false;
+            let comp = players[activePlayerIdx];
+            if (comp.hand.length === 0) { checkRoundOrRoundEnd(); return; }
+
+            let sp5Idx = comp.hand.findIndex(c => c.suit === '♠' && c.name === '5');
+            if (sp5Idx !== -1 && tableItems.length > 0) {
+                executeFejeblad(activePlayerIdx, sp5Idx); return;
+            }
+
+            for (let i = 0; i < comp.hand.length; i++) {
+                let card = comp.hand[i];
+                let allowedVals = getCardValues(card, true);
+                if (comp.activeBuildValue !== null) allowedVals = allowedVals.filter(v => v === comp.activeBuildValue);
+
+                for (let testVal of allowedVals) {
+                    for (let j = 0; j < tableItems.length; j++) {
+                        if (tableItems[j].value === testVal) {
+                            executeTake(activePlayerIdx, i, [j], testVal); return;
+                        }
+                    }
+                }
+            }
+
+            if (comp.activeBuildValue === null && comp.type !== 'easy') {
+                for (let i = 0; i < comp.hand.length; i++) {
+                    let myCard = comp.hand[i];
+                    for (let j = 0; j < tableItems.length; j++) {
+                        let ti = tableItems[j];
+                        if (ti.type === 'single') {
+                            for (let mv of getCardValues(myCard, false)) {
+                                for (let tv of getCardValues(ti.card, false)) {
+                                    let sum = mv + tv;
+                                    if (sum >= 10 && sum <= 14) {
+                                        let hasCollector = comp.hand.some((c, cIdx) => cIdx !== i && getCardValues(c, true).includes(sum));
+                                        if (hasCollector) {
+                                            let cardPlayed = comp.hand.splice(i, 1)[0];
+                                            tableItems.splice(j, 1);
+                                            tableItems.push({ type: 'build', value: sum, cards: [ti.card, cardPlayed], isMultiple: false, owner: comp.id });
+                                            comp.activeBuildValue = sum;
+                                            let logTxt = `${comp.name} byggede til ${sum} med ${getCardText(cardPlayed)}.`;
+                                            pauseAndAwaitConfirm(logTxt, endTurn); return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let dropIdx = 0;
+            if(comp.type === 'hard') {
+                let safeIdx = comp.hand.findIndex(c => c.name!=='A' && !(c.suit==='♠'&&c.name==='2') && !(c.suit==='♦'&&c.name==='10'));
+                if(safeIdx !== -1) dropIdx = safeIdx;
+            }
+
+            let cardDropped = comp.hand.splice(dropIdx, 1)[0];
+            tableItems.push({ type: 'single', card: cardDropped, value: cardDropped.value });
+            let logTxt = `${comp.name} smed ${getCardText(cardDropped)} på bordet.`;
+            pauseAndAwaitConfirm(logTxt, endTurn);
+        }
+
+        function endTurn() {
+            updateUI();
+            activePlayerIdx = (activePlayerIdx + 1) % numPlayers;
+            updateStatusText();
+            if (activePlayerIdx !== 0) { triggerAiTurn(); } 
+            else { checkRoundOrRoundEnd(); }
+        }
+
+        function checkRoundOrRoundEnd() {
+            let allHandsEmpty = players.every(p => p.hand.length === 0);
+            if (allHandsEmpty) {
+                if (deck.length > 0) {
+                    dealCardsToPlayers(); 
+                    activePlayerIdx = (dealerIdx + 1) % numPlayers; 
+                    updateStatusText(); updateUI();
+                    if(activePlayerIdx !== 0) triggerAiTurn();
+                } else {
+                    let remnants = [];
+                    tableItems.forEach(item => {
+                        if(item.type === 'single') remnants.push(item.card); else remnants.push(...item.cards);
+                    });
+                    let lastStikPlayerId = lastInRowToTakeId !== null ? lastInRowToTakeId : dealerIdx;
+                    players.find(p => p.id === lastStikPlayerId).pile.push(...remnants);
+                    tableItems = [];
+                    afslutOgBeregnPoint(lastStikWinnerId = lastStikPlayerId);
+                }
+            }
+        }
+
+        function afslutOgBeregnPoint(lastStikWinnerId) {
+            let logMsg = "RUNDEN ER AFSLUTTET!\n\n";
+            let maxCards = -1, maxCardsPlayer = null, cardsTie = false;
+            let maxSpades = -1, maxSpadesPlayer = null, spadesTie = false;
+
+            players.forEach(p => {
+                let cCount = p.pile.length; let sCount = p.pile.filter(c => c.suit === '♠').length;
+                if (cCount > maxCards) { maxCards = cCount; maxCardsPlayer = p; cardsTie = false; }
+                else if (cCount === maxCards) { cardsTie = true; }
+                if (sCount > maxSpades) { maxSpades = sCount; maxSpadesPlayer = p; spadesTie = false; }
+                else if (sCount === maxSpades) { spadesTie = true; }
+            });
+
+            players.forEach(p => {
+                let rPoints = 0; logMsg += `--- ${p.name} ---\n`;
+                if (!cardsTie && maxCardsPlayer === p) { rPoints += 1; logMsg += `- Flest kort (+1 pt)\n`; }
+                if (!spadesTie && maxSpadesPlayer === p) { rPoints += 2; logMsg += `- Flest spar (+2 pt)\n`; }
+                let aces = p.pile.filter(c => c.name === 'A').length;
+                if (aces > 0) { rPoints += aces; logMsg += `- Eser (+${aces} pt)\n`; }
+                if (p.pile.some(c => c.suit === '♦' && c.name === '10')) { rPoints += 2; logMsg += `- Store Kasino (♦10) (+2 pt)\n`; }
+                if (p.pile.some(c => c.suit === '♠' && c.name === '2')) { rPoints += 1; logMsg += `- Lille Kasino (♠2) (+1 pt)\n`; }
+                if (p.id === lastStikWinnerId) { rPoints += 1; logMsg += `- Sidste stik bonus (+1 pt)\n`; }
+                if (p.svuppere > 0) { rPoints += p.svuppere; logMsg += `- Svuppere (+${p.svuppere} pt)\n`; }
+
+                p.matchPoints += rPoints;
+                logMsg += `Runde point: ${rPoints} | Total: ${p.matchPoints} pt\n\n`;
+            });
+
+            let winner = null; let highestScore = -1;
+            players.forEach(p => { if (p.matchPoints >= maxPoints && p.matchPoints > highestScore) { highestScore = p.matchPoints; winner = p; } });
+
+            alert(logMsg);
+            if (winner && (maxPoints === 1 || highestScore >= 21)) {
+                alert(`👑 SPILLET ER SLUT! Vinderen blev ${winner.name} med ${winner.matchPoints} point!`);
+                document.getElementById('setup-screen').style.display = 'block';
+                document.getElementById('game-layout').style.display = 'none';
+            } else { 
+                dealerIdx = (dealerIdx + 1) % numPlayers;
+                startNewRound(); 
+            }
+        }
+
+        function canPartitionCardsIntoTarget(cards, target) {
+            let cardOptions = cards.map(c => getCardValues(c, false));
+            function multiPartition(remainingOptions) {
+                if (remainingOptions.length === 0) return true;
+                let n = remainingOptions.length;
+                for (let mask = 1; mask < (1 << n); mask++) {
+                    if (subsetSumsToTarget(remainingOptions, mask, target)) {
+                        let nextOptions = remainingOptions.filter((_, i) => !(mask & (1 << i)));
+                        if (multiPartition(nextOptions)) return true;
+                    }
+                } return false;
+            }
+            function subsetSumsToTarget(optionsList, mask, tgt) {
+                let subsetIndices = [];
+                for(let i=0; i<optionsList.length; i++) { if(mask & (1 << i)) subsetIndices.push(i); }
+                function checkSubset(si, currentSum) {
+                    if (currentSum === tgt && si === subsetIndices.length) return true;
+                    if (currentSum > tgt || si >= subsetIndices.length) return false;
+                    for (let val of optionsList[subsetIndices[si]]) { if (checkSubset(si + 1, currentSum + val)) return true; }
+                    return false;
+                } return checkSubset(0, 0);
+            } return multiPartition(cardOptions);
+        }
+    </script>
+</body>
+</html>
